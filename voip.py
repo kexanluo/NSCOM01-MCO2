@@ -646,7 +646,7 @@ def sendBye(peer_ip, peer_port, my_port):
     call_established = False
 
 def sipReceive():
-    global mode, call_id, call_established, peer_tag, Cseq, close
+    global mode, call_id, call_established, peer_tag, Cseq, close, ringing
 
     while True:
         try:
@@ -723,6 +723,7 @@ def sipReceive():
 
         elif msg.startswith("SIP/2.0 486 Busy Here"):
             printme(f"\n[SYSTEM] Client is in another call ...", f"")
+            threading.Thread(target=in_call_menu, args=(receiverIP, SIP_PORT_RECEIVER), daemon=True).start()
             playSound("audios/client-busy-sound.wav", 2)
         
         elif msg.startswith("SIP/2.0 200 OK"):
