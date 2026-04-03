@@ -171,10 +171,10 @@ def send_rtcp_sr_voip(peer_ip, peer_port):
 
             rtcpSock.sendto(packet, (peer_ip, peer_port))
             printme("- - - - - - - - - - [RTCP SR SENT] - - - - - - - - - -" , "")
-            print(f"[OUTBOUND] PACKET SENT       : {packet_count}")
-            print(f"[OUTBOUND] OCTETS COUNT      : {octet_count}")
-            print(f"[INBOUND]  PACKET LOSS       : {packet_loss}")
-            print(f"[INBOUND]  RECEIVED SEQUENCE : {highest_seq}")
+            printme(f"[OUTBOUND] PACKET SENT       : {packet_count}", "")
+            printme(f"[OUTBOUND] OCTETS COUNT      : {octet_count}", "")
+            printme(f"[INBOUND]  PACKET LOSS       : {packet_loss}", "")
+            printme(f"[INBOUND]  RECEIVED SEQUENCE : {highest_seq}", "")
             printme("- - - - - - - - - - - - - - - - - - - - - - - - - - - ", f"\n- - Call Menu - - [X] End Call >>> ")
 
         except Exception as e:
@@ -224,8 +224,8 @@ def send_rtcp_sr_stream(peer_ip, peer_port):
             rtcpSock.sendto(packet, (peer_ip, peer_port))
 
             printme("- - - - - - - - - - [RTCP SR SENT] - - - - - - - - - -" , "")
-            print(f"[OUTBOUND] PACKET SENT       : {packet_count}")
-            print(f"[OUTBOUND] OCTETS COUNT      : {octet_count}")
+            printme(f"[OUTBOUND] PACKET SENT       : {packet_count}", "")
+            printme(f"[OUTBOUND] OCTETS COUNT      : {octet_count}", "")
             printme("- - - - - - - - - - - - - - - - - - - - - - - - - - - ", f"\n- - Call Menu - - [X] End Call >>> ")
 
         except Exception as e:
@@ -236,7 +236,7 @@ def send_rtcp_rr(peer_ip, peer_port):
     global packet_loss, received_seq, expected_ssrc
 
     while call_established:
-        time.sleep(5.1)
+        time.sleep(5)
         try:
             version = 2
             padding = 0
@@ -273,8 +273,8 @@ def send_rtcp_rr(peer_ip, peer_port):
             rtcpSock.sendto(packet, (peer_ip, peer_port))
 
             printme("- - - - - - - - - - [RTCP RR SENT] - - - - - - - - - -" , "")
-            print(f"[INBOUND]  PACKET LOSS       : {packet_loss}")
-            print(f"[INBOUND]  RECEIVED SEQUENCE : {highest_seq}")
+            printme(f"[INBOUND]  PACKET LOSS       : {packet_loss}", "")
+            printme(f"[INBOUND]  RECEIVED SEQUENCE : {highest_seq}", "")
             printme("- - - - - - - - - - - - - - - - - - - - - - - - - - - ", f"\n- - Call Menu - - [X] End Call >>> ")
 
         except Exception as e:
@@ -285,7 +285,7 @@ def receive_rtcp():
     while call_established:
         try:
             data, addr = rtcpSock.recvfrom(1024)
-            time.sleep(0.3) # Short Delay for printing to avoid printing collision
+            time.sleep(0.5) # Short Delay for printing to avoid printing collision
 
             if len(data) < 8:
                 continue
@@ -300,14 +300,14 @@ def receive_rtcp():
             
             printme("- - - - - - - - - - [RTCP RECEIVED] - - - - - - - - - -" , "")
             if pt == 200:
-                print(f"Sender Report from {addr[0]}:\n")
-                print(f"  Sender SSRC: {sender_ssrc}")
-                print(f"  Packets SENT: {packet_count}")
-                print(f"  Octets SENT: {octet_count}")
+                printme(f"Sender Report from {addr[0]}:\n", "")
+                printme(f"  Sender SSRC: {sender_ssrc}", "")
+                printme(f"  Packets SENT: {packet_count}", "")
+                printme(f"  Octets SENT: {octet_count}", "")
 
             elif pt == 201:
-                print(f"Receiver Report from {addr[0]}:\n")
-                print(f"  Sender SSRC: {sender_ssrc}")
+                printme(f"Receiver Report from {addr[0]}:\n", "")
+                printme(f"  Sender SSRC: {sender_ssrc}", "")
 
             if rc > 0:
                 if pt == 200:
@@ -319,11 +319,11 @@ def receive_rtcp():
                     "!I B 3s I I I I", report_block
                 )
                 cumulative_lost = int.from_bytes(cumulative_lost_bytes, "big")
-                print(f"\n    + + + + + + + R E P O R T + + + + + + +")
-                print(f"      Reporting on SSRC: {report_ssrc}")
-                print(f"      Packet LOSS: {cumulative_lost}")
-                print(f"      Highest Seq Received: {highest_seq}")
-                print(f"    + + + + + + + + + + + + + + + + + + + +")
+                printme(f"\n    + + + + + + + R E P O R T + + + + + + +", "")
+                printme(f"      Reporting on SSRC: {report_ssrc}", "")
+                printme(f"      Packet LOSS: {cumulative_lost}", "")
+                printme(f"      Highest Seq Received: {highest_seq}", "")
+                printme(f"    + + + + + + + + + + + + + + + + + + + +", "")
 
             printme("- - - - - - - - - - - - - - - - - - - - - - - - - - - -", f"\n- - Call Menu - - [X] End Call >>> ")
 
@@ -376,10 +376,10 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
                             lost = sequence - received_seq - 1
                             if lost > 0:
                                 packet_loss += lost
-                                print(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}")
+                                printme(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}", f"\n- - Call Menu - - [X] End Call >>> ")
 
                         elif sequence <= received_seq:
-                            # out-of-order or duplicate → ignore
+                            # out-of-order or duplicate - ignore
                             pass
 
                     received_seq = sequence
@@ -432,10 +432,16 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
                     if received_seq == -1:
                         expected_ssrc = ssrc
 
-                    if received_seq != -1 and sequence != (received_seq + 1):
-                        lost = (sequence - received_seq - 1)
-                        packet_loss += lost
-                        print(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}")
+                    if received_seq != -1:
+                        if sequence > received_seq:
+                            lost = sequence - received_seq - 1
+                            if lost > 0:
+                                packet_loss += lost
+                                printme(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}", f"\n- - Call Menu - - [X] End Call >>> ")
+
+                        elif sequence <= received_seq:
+                            # out-of-order or duplicate - ignore
+                            pass
 
                     received_seq = sequence
                     stream_in.write(audio_chunk)
@@ -465,9 +471,6 @@ def in_call_menu(peer_ip, peer_port):
                         sendBye(peer_ip, SIP_PORT_RECEIVER, SIP_PORT_CALLER)
                     else:
                         sendBye(peer_ip, SIP_PORT_CALLER, SIP_PORT_RECEIVER)
-
-                    if mode == "Stream Recorded Audio":
-                        playSound("audios/end-call-sound.wav", 2)
                     break
                 elif ringing:
                     cancelled = True
@@ -715,7 +718,8 @@ def sipReceive():
                 print(f"[SYSTEM] 200 OK for BYE received from {addr[0]}")
                 call_established = False
                 print("[SYSTEM] Call terminated gracefully")
-                playSound("audios/end-call-sound.wav", 2)
+                if mode == "VOIP Call":
+                    playSound("audios/end-call-sound.wav", 2)
                 close = True
 
             elif req == "CANCEL":
@@ -777,7 +781,8 @@ def sipReceive():
             sipSock.sendto(response.encode(), addr)
             print(f"[SYSTEM] 200 OK for BYE sent to {addr[0]}")
             print("[SYSTEM] Call terminated gracefully")
-            playSound("audios/end-call-sound.wav", 2)
+            if mode == "VOIP Call":
+                playSound("audios/end-call-sound.wav", 2)
             close = True
 
 # ROLE-BASED CONTROL
