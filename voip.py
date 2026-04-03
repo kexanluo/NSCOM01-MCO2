@@ -371,10 +371,16 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
                     if received_seq == -1:
                         expected_ssrc = ssrc
 
-                    if received_seq != -1 and sequence != (received_seq + 1):
-                        lost = (sequence - received_seq - 1)
-                        packet_loss += lost
-                        print(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}")
+                    if received_seq != -1:
+                        if sequence > received_seq:
+                            lost = sequence - received_seq - 1
+                            if lost > 0:
+                                packet_loss += lost
+                                print(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}")
+
+                        elif sequence <= received_seq:
+                            # out-of-order or duplicate → ignore
+                            pass
 
                     received_seq = sequence
                     stream_in.write(audio_chunk)
