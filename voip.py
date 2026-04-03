@@ -32,7 +32,7 @@ close = False
 
 # FOR RTP
 TIMESTAMP = random.getrandbits(32)
-HEADER_FORMAT = "!HII"
+HEADER_FORMAT = "!BBHII"
 HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
 SSRC = random.getrandbits(32)
 expected_ssrc = ""
@@ -349,7 +349,17 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
 
             while call_established:
                 try:
-                    header = struct.pack(HEADER_FORMAT, seq, TIMESTAMP, SSRC)
+                    version = 2
+                    padding = 0
+                    extension = 0
+                    cc = 0
+                    marker = 0
+                    payload_type = 0  # PCMU G.711
+
+                    first_byte = (version << 6) | (padding << 5) | (extension << 4) | cc
+                    second_byte = (marker << 7) | payload_type
+
+                    header = struct.pack(HEADER_FORMAT, first_byte, second_byte, seq, TIMESTAMP, SSRC)
                     data = stream_out.read(CHUNK, exception_on_overflow=False)
                     rtpSock.sendto(header + data, (peer_ip, peer_rtp_port))
 
@@ -364,8 +374,8 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
 
             while call_established:
                 try:
-                    data, addr = rtpSock.recvfrom(2058)
-                    sequence, timestamp, ssrc = struct.unpack(HEADER_FORMAT, data[:HEADER_SIZE]) 
+                    data, addr = rtpSock.recvfrom(CHUNK * 2 + HEADER_SIZE)
+                    fb, sb, sequence, timestamp, ssrc = struct.unpack(HEADER_FORMAT, data[:HEADER_SIZE]) 
                     audio_chunk = data[HEADER_SIZE:]
 
                     if received_seq == -1:
@@ -412,7 +422,18 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
 
                 # Correct signed conversion for paInt8
                 data_signed = bytes((b - 128) & 0xFF for b in data)
-                header = struct.pack(HEADER_FORMAT, seq, TIMESTAMP, SSRC)
+
+                version = 2
+                padding = 0
+                extension = 0
+                cc = 0
+                marker = 0
+                payload_type = 0  # PCMU G.711
+
+                first_byte = (version << 6) | (padding << 5) | (extension << 4) | cc
+                second_byte = (marker << 7) | payload_type
+
+                header = struct.pack(HEADER_FORMAT, first_byte, second_byte, seq, TIMESTAMP, SSRC)
                 rtpSock.sendto(header + data_signed, (peer_ip, peer_rtp_port))
 
                 seq += 1
@@ -426,7 +447,7 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
             while call_established:
                 try:
                     packet, addr = rtpSock.recvfrom(HEADER_SIZE + 4096)
-                    sequence, ts, ssrc = struct.unpack(HEADER_FORMAT, packet[:HEADER_SIZE])
+                    fb, sb, sequence, ts, ssrc = struct.unpack(HEADER_FORMAT, packet[:HEADER_SIZE])
                     audio_chunk = packet[HEADER_SIZE:]
 
                     if received_seq == -1:
@@ -460,7 +481,7 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
 
 # CALL MENU
 def in_call_menu(peer_ip, peer_port):
-    global call_established, close, Cseq, cancelled
+    global call_established, close, Cseq, cancelled, ringing
 
     while True:
         userCommand = input("- - Call Menu - - [X] End Call >>> ")
@@ -571,7 +592,7 @@ def ringingTimeout(peer_ip):
         counter += 1
 
         if counter == 12:
-            print("[SYSTEM] Another client did not answer your call ...")
+            print(f"\n\n[SYSTEM] Another client did not answer your call ...")
             Cseq += 1
             branch = str(uuid.uuid4())
             headers = [
@@ -586,6 +607,7 @@ def ringingTimeout(peer_ip):
 
             message = "\r\n".join(headers) + "\r\n\r\n"
             sipSock.sendto(message.encode(), (peer_ip, SIP_PORT_RECEIVER))
+            print(f"[SYSTEM] CANCEL sent to {peer_ip} ...")
             stopSound()
             playSound("audios/end-call-sound.wav", 2)
 
@@ -637,35 +659,58 @@ def sipReceive():
         msg = data.decode(errors="ignore")
 
         if msg.startswith("INVITE"):
-            print(f"\n[SYSTEM] INVITE received from {addr[0]}\n")
-            playSound("audios/incoming-call-sound.wav", 1)
+            if not call_established and not ringing:
+                ringing = True
+                print(f"\n[SYSTEM] INVITE received from {addr[0]}\n")
+                playSound("audios/incoming-call-sound.wav", 1)
 
-            for line in msg.split("\r\n"):
-                if line.startswith("Via:"):
-                    branch = line.split("branch=z9hG4bK")[1].split(";")[0]
-                
-                if line.startswith("From:"):
-                    peer_tag = line.split("tag=")[1].split(";")[0]
+                for line in msg.split("\r\n"):
+                    if line.startswith("Via:"):
+                        branch = line.split("branch=z9hG4bK")[1].split(";")[0]
+                    
+                    if line.startswith("From:"):
+                        peer_tag = line.split("tag=")[1].split(";")[0]
 
-                if line.startswith("Call-ID:"):
-                    call_id = line.split("Call-ID:")[1].strip()
+                    if line.startswith("Call-ID:"):
+                        call_id = line.split("Call-ID:")[1].strip()
 
-            headers = [
-                f"SIP/2.0 180 Ringing",
-                f"Via: SIP/2.0/UDP {addr[0]}:{SIP_PORT_CALLER};branch=z9hG4bK{branch}",
-                f"From: <sip:client@{addr[0]}>;tag={peer_tag}",
-                f"To: <sip:client@{MY_IP}>;tag={myTag}",
-                f"Call-ID: {call_id}",
-                f"CSeq: {Cseq} INVITE",
-                f"Contact: <sip:client@{MY_IP}:{SIP_PORT_RECEIVER}>",
-                "Content-Length: 0"
-            ]
+                headers = [
+                    f"SIP/2.0 180 Ringing",
+                    f"Via: SIP/2.0/UDP {addr[0]}:{SIP_PORT_CALLER};branch=z9hG4bK{branch}",
+                    f"From: <sip:client@{addr[0]}>;tag={peer_tag}",
+                    f"To: <sip:client@{MY_IP}>;tag={myTag}",
+                    f"Call-ID: {call_id}",
+                    f"CSeq: {Cseq} INVITE",
+                    f"Contact: <sip:client@{MY_IP}:{SIP_PORT_RECEIVER}>",
+                    "Content-Length: 0"
+                ]
+                threading.Thread(target=incoming_call_menu, args=(msg, addr, branch), daemon=True).start()
+            else:
+                for line in msg.split("\r\n"):
+                    if line.startswith("Via:"):
+                        br = line.split("branch=z9hG4bK")[1].split(";")[0]
+                    
+                    if line.startswith("From:"):
+                        ptag = line.split("tag=")[1].split(";")[0]
+
+                    if line.startswith("Call-ID:"):
+                        cid = line.split("Call-ID:")[1].strip()
+
+                headers = [
+                    f"SIP/2.0 486 Busy Here",
+                    f"Via: SIP/2.0/UDP {addr[0]}:{SIP_PORT_CALLER};branch=z9hG4bK{br}",
+                    f"From: <sip:client@{addr[0]}>;tag={ptag}",
+                    f"To: <sip:client@{MY_IP}>;tag={myTag}",
+                    f"Call-ID: {cid}",
+                    f"CSeq: 1 INVITE",
+                    "Content-Length: 0"
+                ]
+
             response = "\r\n".join(headers) + "\r\n\r\n"
             sipSock.sendto(response.encode(), addr)
-            threading.Thread(target=incoming_call_menu, args=(msg, addr, branch), daemon=True).start()
+
 
         elif msg.startswith("SIP/2.0 180 Ringing"):
-            global ringing
             sipSock.settimeout(None)
             ringing = True
             playSound("audios/dialing-sound.wav", 1)
@@ -674,7 +719,11 @@ def sipReceive():
         elif msg.startswith("SIP/2.0 603 Decline"):
             printme(f"\n[SYSTEM] Your call is declined ...", f"")
             cancelled = True
-            playSound("audios/end-call-sound.wav", 2)
+            playSound("audios/end-call-sound.wav", 3, 6)
+
+        elif msg.startswith("SIP/2.0 486 Busy Here"):
+            printme(f"\n[SYSTEM] Client is in another call ...", f"")
+            playSound("audios/client-busy-sound.wav", 2)
         
         elif msg.startswith("SIP/2.0 200 OK"):
             for line in msg.split("\r\n"):
@@ -723,11 +772,12 @@ def sipReceive():
                 close = True
 
             elif req == "CANCEL":
-                print(f"\n[SYSTEM] 200 OK for CANCEL received from {addr[0]}")
+                print(f"[SYSTEM] 200 OK for CANCEL received from {addr[0]}")
                 call_established = False
                 print("[SYSTEM] Call terminated gracefully")
 
         elif msg.startswith("CANCEL"):
+            print(f"\n\n[SYSTEM] Cancel request received from {addr[0]}")
             stopSound()
             for line in msg.split("\r\n"):
                 if line.startswith("Via:"):
@@ -745,6 +795,7 @@ def sipReceive():
             ]
             response = "\r\n".join(headers) + "\r\n\r\n"
             sipSock.sendto(response.encode(), addr)
+            print(f"[SYSTEM] 200 OK for CANCEL sent to {addr[0]}")
             close = True
 
         elif msg.startswith("ACK"):
