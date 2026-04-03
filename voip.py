@@ -432,8 +432,7 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
                         print(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}")
 
                     received_seq = sequence
-                    if call_established:
-                        stream_in.write(audio_chunk)
+                    stream_in.write(audio_chunk)
                 except Exception as e:
                     print(f"[SYSTEM] AUDIO RECEIVE ERROR: {e}")
                     break
@@ -613,6 +612,7 @@ def sendBye(peer_ip, peer_port, my_port):
     message = "\r\n".join(headers) + "\r\n\r\n"
     sipSock.sendto(message.encode(), ((peer_ip, peer_port)))
     printme(f"\n[SYSTEM] BYE sent to {peer_ip}", "")
+    call_established = False
 
 def sipReceive():
     global mode, call_id, call_established, peer_tag, Cseq, close
