@@ -432,7 +432,8 @@ def start_audio_stream(peer_ip, peer_rtp_port, peer_rtcp_port):
                         print(f"[SYSTEM - LOST DETECTION] Packet lost: {lost}, total lost: {packet_loss}")
 
                     received_seq = sequence
-                    stream_in.write(audio_chunk)
+                    if call_established:
+                        stream_in.write(audio_chunk)
                 except Exception as e:
                     print(f"[SYSTEM] AUDIO RECEIVE ERROR: {e}")
                     break
