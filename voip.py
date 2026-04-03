@@ -719,12 +719,12 @@ def sipReceive():
         elif msg.startswith("SIP/2.0 603 Decline"):
             printme(f"\n[SYSTEM] Your call is declined ...", f"")
             cancelled = True
-            playSound("audios/end-call-sound.wav", 3, 6)
+            playSound("audios/end-call-sound.wav", 2)
 
         elif msg.startswith("SIP/2.0 486 Busy Here"):
             printme(f"\n[SYSTEM] Client is in another call ...", f"")
             threading.Thread(target=in_call_menu, args=(receiverIP, SIP_PORT_RECEIVER), daemon=True).start()
-            playSound("audios/client-busy-sound.wav", 2)
+            playSound("audios/client-busy-sound.wav", 3, 6)
         
         elif msg.startswith("SIP/2.0 200 OK"):
             for line in msg.split("\r\n"):
