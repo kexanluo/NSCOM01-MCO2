@@ -495,7 +495,7 @@ def in_call_menu(peer_ip, peer_port):
                     break
                 elif ringing:
                     cancelled = True
-                    print("[SYSTEM] Cancelling call...")
+                    printme("[SYSTEM] Cancelling call...", "")
                     Cseq += 1
                     branch = str(uuid.uuid4())
                     headers = [
@@ -514,7 +514,7 @@ def in_call_menu(peer_ip, peer_port):
                     playSound("audios/end-call-sound.wav", 2)
                     break
                 elif not ringing:
-                    print("[SYSTEM] Terminating call ...")
+                    printme("[SYSTEM] Terminating call ...", "")
                     cancelled = True
                     stopSound()
                     playSound("audios/end-call-sound.wav", 2)
