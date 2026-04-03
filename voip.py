@@ -722,8 +722,7 @@ def sipReceive():
             playSound("audios/end-call-sound.wav", 2)
 
         elif msg.startswith("SIP/2.0 486 Busy Here"):
-            print(f"\n[SYSTEM] Client is in another call ...")
-            threading.Thread(target=in_call_menu, args=(receiverIP, SIP_PORT_RECEIVER), daemon=True).start()
+            printme(f"\n[SYSTEM] Client is in another call ...", f"\n- - Call Menu - - [X] End Call >>> ")
             playSound("audios/client-busy-sound.wav", 3, 6)
         
         elif msg.startswith("SIP/2.0 200 OK"):
