@@ -722,6 +722,7 @@ def sipReceive():
             playSound("audios/end-call-sound.wav", 2)
 
         elif msg.startswith("SIP/2.0 486 Busy Here"):
+            sipSock.settimeout(None)
             printme(f"\n[SYSTEM] Client is in another call ...", f"\n- - Call Menu - - [X] End Call >>> ")
             playSound("audios/client-busy-sound.wav", 3, 6)
         
