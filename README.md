@@ -32,7 +32,7 @@ This project is a console-based peer-to-peer VoIP and audio streaming applicatio
        
   II. Features  
 
-      a. SIP-based call signaling (INVITE, ACK, BYE, etc.)
+      a. SIP-based call signaling (INVITE, RINGING, BUSY HERE, DECLINE, CANCEL, OK, ACK, BYE)
       b. Real-time voice communication using RTP
       c. Recorded audio streaming over RTP
       d. RTCP feedback for packet statistics and monitoring
