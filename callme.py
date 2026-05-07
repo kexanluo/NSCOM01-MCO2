@@ -10,7 +10,7 @@ import pyaudio
 import winsound
 import threading
 
-# DEFAULT PORTS
+# DEFAULT PORTS - try
 SIP_PORT_CALLER = 6767
 SIP_PORT_RECEIVER = 6768
 RTP_PORT_CALLER = 6776
